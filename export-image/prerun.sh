@@ -31,7 +31,7 @@ if [ "${NO_PRERUN_QCOW2}" = "0" ]; then
 
 	parted --script "${IMG_FILE}" mklabel msdos
 	parted --script "${IMG_FILE}" unit B mkpart primary fat32 "${BOOT_PART_START}" "$((BOOT_PART_START + BOOT_PART_SIZE - 1))"
-	parted --script "${IMG_FILE}" unit B mkpart primary ext4 "${ROOT_PART_START}" "$((ROOT_PART_START + ROOT_PART_SIZE - 1))"
+	parted --script "${IMG_FILE}" unit B mkpart primary f2fs "${ROOT_PART_START}" "$((ROOT_PART_START + ROOT_PART_SIZE - 1))"
 
 	echo "Creating loop device..."
 	cnt=0
@@ -56,12 +56,12 @@ if [ "${NO_PRERUN_QCOW2}" = "0" ]; then
 	fi
 	done
 	mkdosfs -n boot -F 32 -s 4 -v "$BOOT_DEV" > /dev/null
-	mkfs.ext4 -L rootfs -O "$ROOT_FEATURES" "$ROOT_DEV" > /dev/null
+	mkfs.f2fs -l rootfs "$ROOT_DEV" > /dev/null
 
-	mount -v "$ROOT_DEV" "${ROOTFS_DIR}" -t ext4
-	mkdir -p "${ROOTFS_DIR}/boot"
-	mount -v "$BOOT_DEV" "${ROOTFS_DIR}/boot" -t vfat
+	mount -v "$ROOT_DEV" "${ROOTFS_DIR}" -t f2fs
+	rsync -aHAXx --exclude /var/cache/apt/archives "${EXPORT_ROOTFS_DIR}/" "${ROOTFS_DIR}/"
+	mount -v "$BOOT_DEV" "${ROOTFS_DIR}/media" -t vfat
 
-	rsync -aHAXx --exclude /var/cache/apt/archives --exclude /boot "${EXPORT_ROOTFS_DIR}/" "${ROOTFS_DIR}/"
-	rsync -rtx "${EXPORT_ROOTFS_DIR}/boot/" "${ROOTFS_DIR}/boot/"
+	NOOBS_F2FS_URL="https://ghproxy.com/https://github.com/yuanzhouxue/noobs-f2fs/releases/download/latest/noobs-f2fs.tgz"
+	curl -s ${NOOBS_F2FS_URL} | tar zx --no-same-owner -C "${ROOTFS_DIR}/media"
 fi
